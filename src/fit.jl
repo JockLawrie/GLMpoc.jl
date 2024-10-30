@@ -1,31 +1,31 @@
 ################################################################################
 # Fit
 
-function fit(d, links, w, y, Xs)
-    θ0      = initθ(d, Xs)
+function fit(d, links, w, y, Xs, opts=nothing)
+    coefs0  = initcoefs(d, links, w, y, Xs)
     cache   = initcache(d, links, y, Xs)
-    opts    = (iterations=250, g_abstol=1e-8)  # Use the same terminology as Optim.jl
-    loss, θ = blockwise_coordinate_descent(θ0, loss!, block_gradient!, block_hessian!, y, Xs, w, opts, cache)
+    opts    = isnothing(opts) ? defaultopts() : merge(defaultopts(), opts)
+    loss, θ = blockwise_coordinate_descent(coefs0, loss!, block_gradient!, block_hessian!, y, Xs, w, opts, cache)
     loss, θ
 end
 
-#fit(d::Categorical, links, w, y, Xs) = TODO...
+defaultopts() = (iterations=500, g_abstol=1e-8)  # Use the same terminology as Optim.jl
 
 ################################################################################
 # Init θ and cache 
 
 """
-Default initial value for θ given the response distribution d,
-namely a list of vectors filled with 0s.
-Can be overidden for specific distributions.
+Default initial value for coefs given the response distribution d,
+namely a list of vectors filled with zeros.
+Can be overridden for specific distributions.
 """
-function initθ(d, Xs)
-    θ = Vector{typeof(0.0)}[]
+function initcoefs(d, links, w, y, Xs)
+    coefs0 = Vector{typeof(0.0)}[]
     for X in Xs
         p = size(X, 2)
-        push!(θ, fill(0.0, p))
+        push!(coefs0, fill(0.0, p))
     end
-    θ
+    coefs0
 end
 
 function initcache(d, links, y, Xs)
@@ -41,8 +41,8 @@ end
 ################################################################################
 # Loss function
 
-function loss!(y, Xs, w, θ, cache)
-    update_prms!(cache, Xs, θ)
+function loss!(y, Xs, w, coefs, cache)
+    update_prms!(cache.d, cache, Xs, coefs)
     result = 0.0
     d      = cache.d
     prms   = cache.prms
@@ -61,13 +61,13 @@ function loss!(y, Xs, w, θ, cache)
 end
 
 "Update the parameters of cache.d"
-function update_prms!(cache, Xs, θ)
+function update_prms!(d, cache, Xs, coefs)
     links = cache.links
     prms  = cache.prms
     for (blocknumber, X) in enumerate(Xs)
         lnk = links[blocknumber]
         vw  = view(prms, :, blocknumber)
-        mul!(vw, X, θ[blocknumber])  # Update eta
+        mul!(vw, X, coefs[blocknumber])  # Update eta
         for (i, eta) in enumerate(vw)
             vw[i] = invlink(lnk, eta)  # Transform to parameter by applying the inverse link function
         end
@@ -78,7 +78,7 @@ end
 ################################################################################
 # Gradient and hessian
 
-function block_gradient!(g, blocknumber, y, Xs, w, θ, cache)
+function block_gradient!(g, blocknumber, y, Xs, w, coefs, cache)
     update_working_weights!(cache, blocknumber, y, w)
     mul!(g[blocknumber], transpose(Xs[blocknumber]), cache.wwgrad)  # g = transpose(X)*wwgrad
 end

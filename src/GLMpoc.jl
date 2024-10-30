@@ -13,6 +13,6 @@ include("fit.jl")
 
 # Response distributions
 include("responsedistributions/beta.jl")
-#include("responsedistributions/categorical.jl")
+include("responsedistributions/categorical.jl")
 
 end
