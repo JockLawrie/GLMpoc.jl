@@ -19,7 +19,7 @@ loss, coefs = GLMpoc.fit(distribution, linkfuncs, w, y, Xs, opts)
 - `linkfuncs`:    A tuple of link functions, one for each parameter that depends on covariates
 - `w`: A weight vector.
 - `y`: The response vector.
-- `Xs`: A vector of predictor matrices (`AbstractMatrix`). Can be a mix of matrices and views.
+- `Xs`: A vector of predictor matrices (`AbstractMatrix`), 1 for each parameter that depends on covariates. Can be a mix of matrices and views.
 - `opts`: Solver options. For now a subset of `Optim.Options` from the `Optim` package.
 
-The solver is a block-wise cyclic coordinate descent.
+The solver is a block-wise cyclic coordinate descent with a basic line search.
