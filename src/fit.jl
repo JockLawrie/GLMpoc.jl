@@ -1,12 +1,14 @@
 ################################################################################
 # Fit
 
+"Returns: loss, coefs"
 function fit(d, links, w, y, Xs, opts=nothing)
-    coefs0  = initcoefs(d, links, w, y, Xs)
-    cache   = initcache(d, links, y, Xs)
-    opts    = isnothing(opts) ? defaultopts() : merge(defaultopts(), opts)
-    loss, θ = blockwise_coordinate_descent(coefs0, loss!, block_gradient!, block_hessian!, y, Xs, w, opts, cache)
-    loss, θ
+    check_input_data(y, Xs, w)
+    coefs = initcoefs(d, links, w, y, Xs)
+    cache = initcache(d, links, y, Xs)
+    opts  = isnothing(opts) ? defaultopts() : merge(defaultopts(), opts)
+    loss, coefs = blockwise_coordinate_descent(coefs, loss!, block_gradient!, block_hessian!, y, Xs, w, opts, cache)
+    loss, coefs  # TODO: Also return nobs and vcov(coefs). Then a higher layer implements StatsAPI.
 end
 
 defaultopts() = (iterations=500, g_abstol=1e-8)  # Use the same terminology as Optim.jl
@@ -116,16 +118,19 @@ function update_working_weights!(cache, blocknumber, y, w)
     nothing
 end
 
-"""
-Calculate the gradient and hessian working weights for 1 observation.
-Note: The -1 multiplier at the end is because the loss function is -loglikelihood.
-"""
-function calculate_working_weights(d, links, y, prms, blocknumber)
+"Calculate the working weights for gradient(-LL) and hessian(-LL) for 1 observation."
+function calculate_working_weights(d, links, y, prms, blocknumber, expected=true)
     lnk  = links[blocknumber]
     θ    = prms[blocknumber]
     d1LL = logpdf_firstderiv(d, y, prms, blocknumber)
     d2LL = logpdf_secondderiv(d, y, prms, blocknumber)
-    dg1  = linkderiv1(lnk, θ)
-    dg21 = linkderiv2over1(lnk, θ, dg1)
-    -d1LL/dg1, (d1LL*dg21 - d2LL)/(dg1*dg1)  # wwgrad, wwhess
+    d1g  = linkderiv1(lnk, θ)
+    wwg  = -d1LL/d1g
+    if expected
+        wwh  = -d2LL/(d1g*d1g)
+    else
+        d21g = linkderiv2over1(lnk, θ, d1g)
+        wwh  = (d1LL*d21g - d2LL)/(d1g*d1g)
+    end
+    wwg, wwh
 end

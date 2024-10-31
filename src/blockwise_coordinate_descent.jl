@@ -7,7 +7,6 @@ using Logging
 
 "Cyclic blockwise coordinate descent"
 function blockwise_coordinate_descent(θ0, f, block_gradient!, block_hessian!, y, Xs, w, opts, cache)
-    checkinputs(y, Xs, w)
     θ = θ0
     s = [fill(0.0, length(block)) for block in θ]  # Search direction: θnew = θ + a*s for some scalar a
     g = [fill(0.0, length(block)) for block in θ]  # Gradient for each block
@@ -28,16 +27,6 @@ function blockwise_coordinate_descent(θ0, f, block_gradient!, block_hessian!, y
     end
     !converged && @warn "Blockwise Coordinate Descent did not converge: gnorm = $(maxabs(g)) > g_abstol ($(g_abstol))."
     loss, θ
-end
-
-"Check that the number of observations in y, Xs and w are the same."
-function checkinputs(y, Xs, w)
-    n = length(y)
-    !isnothing(w) && length(w) != n && error("y has $(n) observations, but w has length $(length(w))")
-    for (k, X) in enumerate(Xs)
-        size(X, 1) != n && error("y has $(n) observations, but Xs[$(k)] has $(size(X, 1)) rows")
-    end
-    n
 end
 
 """
