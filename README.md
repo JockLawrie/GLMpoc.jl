@@ -2,7 +2,7 @@
 
 This repo contains a proof-of-concept for fitting GLMs with multiple parameters that each depend on covariates.
 
-For a given model, each parameter depends on its own set of covariates.
+For a given model, each parameter of the response distribution depends on its own set of covariates.
 The sets of covariates may or may not overlap; they can be the same too.
 
 The test cases include:
@@ -15,11 +15,11 @@ For now, this repo contains only 1 `fit` method:
 loss, coefs = GLMpoc.fit(distribution, linkfuncs, w, y, Xs, opts)
 ```
 
-- `distribution`: A distribution from Distributions.jl
-- `linkfuncs`:    A tuple of link functions, one for each parameter that depends on covariates
+- `distribution`: The distribution of the response variable. Defined in Distributions.jl.
+- `linkfuncs`:    A tuple of link functions, one for each parameter of the reponse distribution.
 - `w`: A weight vector.
 - `y`: The response vector.
-- `Xs`: A vector of predictor matrices (`AbstractMatrix`), 1 matrix for each parameter that depends on covariates. Can be a mix of matrices and views.
+- `Xs`: A vector of predictor matrices (`AbstractMatrix`), with 1 matrix for each parameter of the response distribution. Can be a mix of matrices and views.
 - `opts`: Solver options. For now a subset of `Optim.Options` from the `Optim` package.
 
 The solver is a block-wise cyclic coordinate descent with a basic line search.

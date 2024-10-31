@@ -49,7 +49,7 @@ end
 
 ###############################################################################
 # Override the default calculate_working_weights method defined in fit.jl
-# Note: This also overrides the need to define methods for logpdf_firstderiv and logpdf_secondderiv,
+# Note: This removes the need to define methods for logpdf_firstderiv and logpdf_secondderiv,
 #       since these are only used in the default calculate_working_weights method.
 
 function calculate_working_weights(d::Categorical, links, y, prms, blocknumber)
