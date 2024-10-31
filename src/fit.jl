@@ -42,32 +42,35 @@ end
 # Loss function
 
 function loss!(y, Xs, w, coefs, cache)
-    update_prms!(cache.d, cache, Xs, coefs)
+    d    = cache.d
+    prms = cache.prms
+    update_eta!(prms, Xs, coefs)
+    eta_to_prms!(d, prms, cache.links)
     result = 0.0
-    d      = cache.d
-    prms   = cache.prms
     if isnothing(w)
         for (i, yi) in enumerate(y)
-            di = construct_distribution(d, view(prms, i, :))
-            result -= logpdf(di, yi)
+            result -= loglikelihood(d, yi, view(prms, i, :))
         end
     else
         for (i, yi) in enumerate(y)
-            di = construct_distribution(d, view(prms, i, :))
-            result -= w[i]*logpdf(di, yi)
+            result -= w[i] * loglikelihood(d, yi, view(prms, i, :))
         end
     end
     result
 end
 
-"Update the parameters of cache.d"
-function update_prms!(d, cache, Xs, coefs)
-    links = cache.links
-    prms  = cache.prms
+"Set cache.prms = eta = X*coefs"
+function update_eta!(prms, Xs, coefs)
     for (blocknumber, X) in enumerate(Xs)
-        lnk = links[blocknumber]
-        vw  = view(prms, :, blocknumber)
-        mul!(vw, X, coefs[blocknumber])  # Update eta
+        mul!(view(prms, :, blocknumber), X, coefs[blocknumber])
+    end
+    nothing
+end
+
+"For each observation, update the estimated parameters of the response distribution d."
+function eta_to_prms!(d, prms, links)
+    for (blocknumber, lnk) in enumerate(links)
+        vw = view(prms, :, blocknumber)
         for (i, eta) in enumerate(vw)
             vw[i] = invlink(lnk, eta)  # Transform to parameter by applying the inverse link function
         end

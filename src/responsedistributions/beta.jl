@@ -1,10 +1,11 @@
 ###############################################################################
 # Required methods
+# logpdf_firstderiv and logpdf_secondderiv are used in the calculate_working_weights function.
 
-function construct_distribution(d::Beta, prms)
-    μ, ϕ = prms  # mean = a/(a+b), precision = a + b
-    a = μ*ϕ
-    Beta(μ*ϕ, ϕ - a)
+function loglikelihood(d::Beta, y, prms)
+    μ, ϕ = prms
+    a = μ*ϕ  # For Beta(a, b), we have mu = a/(a+b), phi = a + b
+    logpdf(Beta(μ*ϕ, ϕ - a), y)
 end
 
 """
@@ -31,9 +32,9 @@ function logpdf_secondderiv(d::Beta, y, prms, blocknumber)
 end
 
 ###############################################################################
-# Optional (override default methods defined in fit.jl)
+# Optional: override the default initcoefs method defined in fit.jl
 
-#Needs cleaning up, but ok for POC.
+# Needs cleaning up, but ok for POC.
 function initcoefs(d::Beta, links, w, y, Xs)
     z   = [link(links[1], yi) for yi in y]
     X   = Xs[1]
