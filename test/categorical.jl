@@ -16,10 +16,11 @@ xnames  = [xnames, xnames]  # Same predictors for both blocks
 cfg     = GLMconfig(yname, ylevels, xnames, Categorical(3), (LogitLink(), LogitLink()))
 
 # Fit
-opts    = (iterations=250, g_abstol=1e-8)
-fitted  = GLMpoc.fit(cfg, y, Xs, w, opts)
+opts   = (iterations=250, g_abstol=1e-8)
+fitted = fit(cfg, y, Xs, w, opts)
 println(loglikelihood(fitted))
 println(coef(fitted)[1])
 println(coef(fitted)[2])
+println(vcov(fitted))
 
 end

@@ -52,7 +52,7 @@ end
 # Note: This removes the need to define methods for logpdf_firstderiv and logpdf_secondderiv,
 #       since these are only used in the default calculate_working_weights method.
 
-function calculate_working_weights(d::Categorical, links, y, prms, blocknumber)
+function calculate_working_weights(d::Categorical, links, y, prms, blocknumber, expected=true)
     k      = blocknumber + 1    # The category that blocknumber refers to 
     probk  = prms[blocknumber]  # Pr(Category k), k = 2:ncategories (prms = probs[2:ncategories])
     wwgrad = y == k ? (probk - 1.0) : probk

@@ -2,7 +2,7 @@ module GLMpoc
 
 export GLMconfig, GLMfitted,  # Types
        LogitLink, LogLink,    # Link functions
-       coef, loglikelihood    # StatsAPI
+       fit, coef, loglikelihood, nobs, vcov  # StatsAPI
 
 using Dates
 using Distributions

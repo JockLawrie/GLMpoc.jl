@@ -9,7 +9,7 @@ function fit(cfg::GLMconfig, y, Xs, w, opts=nothing)
     opts  = isnothing(opts) ? defaultopts() : merge(defaultopts(), opts)
     loss, coefs = blockwise_coordinate_descent(coefs, loss!, block_gradient!, block_hessian!, y, Xs, w, opts, cache)
     nobs = isnothing(w) ? length(y) : sum(w)
-    vcov = fill(0.0, 2, 2)  # TODO
+    vcov = construct_vcov(cache, coefs, y, Xs, w)
     GLMfitted(cfg, coefs, nobs, -loss, vcov)
 end
 
@@ -102,17 +102,17 @@ end
 #################################################################################################
 
 "Update the working weights for the block"
-function update_working_weights!(cache, blocknumber, y, w)
+function update_working_weights!(cache, blocknumber, y, w, expected=true)
     d, links, prms, wwgrad, wwhess, XtW = cache
     if isnothing(w)
         for (i, yi) in enumerate(y)
-            wwg, wwh = calculate_working_weights(d, links, yi, view(prms, i, :), blocknumber)
+            wwg, wwh = calculate_working_weights(d, links, yi, view(prms, i, :), blocknumber, expected)
             wwgrad[i] = wwg
             wwhess[i] = wwh
         end
     else
         for (i, yi) in enumerate(y)
-            wwg, wwh = calculate_working_weights(d, links, yi, view(prms, i, :), blocknumber)
+            wwg, wwh = calculate_working_weights(d, links, yi, view(prms, i, :), blocknumber, expected)
             wwgrad[i] = w[i] * wwg
             wwhess[i] = w[i] * wwh
         end
@@ -143,4 +143,33 @@ function calculate_working_weights(d, links, y, prms, blocknumber, expected=true
         wwh  = (d1LL*d21g - d2LL)/(d1g*d1g)
     end
     wwg, wwh
+end
+
+#################################################################################################
+
+function construct_vcov(cache, coefs, y, Xs, w)
+    # Update prms
+    d    = cache.d
+    prms = cache.prms
+    update_eta!(prms, Xs, coefs)
+    eta_to_prms!(d, prms, cache.links)
+
+    # Compute expected hessian
+    H = [fill(0.0, length(b), length(b)) for b in coefs]
+    for (blocknumber, b) in enumerate(coefs)
+        update_working_weights!(cache, blocknumber, y, w, true)
+        block_hessian!(H, blocknumber, Xs, w, cache)
+    end
+
+    # Construct vcov from hessian
+    p      = sum(length(b) for b in coefs)
+    result = fill(0.0, p, p)
+    psum   = 0
+    for Hb in H
+        pb    = size(Hb, 1)
+        vw    = view(result, (psum+1):(psum+pb), (psum+1):(psum+pb))
+        vw   .= inv(Hb)
+        psum += pb
+    end
+    result
 end

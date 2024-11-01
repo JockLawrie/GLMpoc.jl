@@ -55,9 +55,10 @@ cfg    = GLMconfig(yname, xnames, Beta(), links)
 
 # Fit
 opts   = (iterations=1000, g_abstol=1e-8)
-fitted = GLMpoc.fit(cfg, y, Xs, w, opts)
+fitted = fit(cfg, y, Xs, w, opts)
 println(loglikelihood(fitted))
 println(coef(fitted)[1])
 println(coef(fitted)[2])
+println(vcov(fitted))
 
 end
