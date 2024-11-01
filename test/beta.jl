@@ -41,17 +41,23 @@ expenditure = [15.998 62.476 1
 23.066 44.872 6
 14.751 27.167 7]
 
-link_mean = LogitLink()
-link_precision = LogLink()
-w  = nothing
+n  = size(expenditure, 1)
 y  = expenditure[:, 1] ./ expenditure[:, 2];
-n  = length(y)
 X  = hcat(fill(1.0, n), expenditure[:, 2:3])
 Xs = [X, reshape(view(X, :, 1), n, 1)]
-opts = (iterations=1000, g_abstol=1e-8)
-loss, B = GLMpoc.fit(Beta(), (link_mean, link_precision), w, y, Xs, opts)
-println(loss)
-println(B[1])
-println(B[2])
+w  = nothing
+
+# Config
+yname  = "foodincome"
+xnames = [["intercept", "income", "persons"], ["intercept"]]
+links  = (LogitLink(), LogLink())  # link_mean, link_precision
+cfg    = GLMconfig(yname, xnames, Beta(), links)
+
+# Fit
+opts   = (iterations=1000, g_abstol=1e-8)
+fitted = GLMpoc.fit(cfg, y, Xs, w, opts)
+println(loglikelihood(fitted))
+println(coef(fitted)[1])
+println(coef(fitted)[2])
 
 end

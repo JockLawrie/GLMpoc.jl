@@ -1,14 +1,16 @@
 ################################################################################
 # Fit
 
-"Returns: loss, coefs"
-function fit(d, links, w, y, Xs, opts=nothing)
+"Returns an instance of GLMfitted"
+function fit(cfg::GLMconfig, y, Xs, w, opts=nothing)
     check_input_data(y, Xs, w)
-    coefs = initcoefs(d, links, w, y, Xs)
-    cache = initcache(d, links, y, Xs)
+    coefs = initcoefs(cfg, y, Xs, w)
+    cache = initcache(cfg, y, Xs)
     opts  = isnothing(opts) ? defaultopts() : merge(defaultopts(), opts)
     loss, coefs = blockwise_coordinate_descent(coefs, loss!, block_gradient!, block_hessian!, y, Xs, w, opts, cache)
-    loss, coefs  # TODO: Also return nobs and vcov(coefs). Then a higher layer implements StatsAPI.
+    nobs = isnothing(w) ? length(y) : sum(w)
+    vcov = fill(0.0, 2, 2)  # TODO
+    GLMfitted(cfg, coefs, nobs, -loss, vcov)
 end
 
 defaultopts() = (iterations=500, g_abstol=1e-8)  # Use the same terminology as Optim.jl
@@ -21,23 +23,23 @@ Default initial value for coefs given the response distribution d,
 namely a list of vectors filled with zeros.
 Can be overridden for specific distributions.
 """
-function initcoefs(d, links, w, y, Xs)
-    coefs0 = Vector{typeof(0.0)}[]
+function initcoefs(cfg::GLMconfig, y, Xs, w)
+    result = Vector{typeof(0.0)}[]
     for X in Xs
         p = size(X, 2)
-        push!(coefs0, fill(0.0, p))
+        push!(result, fill(0.0, p))
     end
-    coefs0
+    result
 end
 
-function initcache(d, links, y, Xs)
+function initcache(cfg, y, Xs)
     n      = length(y)
     pmax   = maximum(size(X, 2) for X in Xs)
     prms   = fill(0.0, n, length(Xs))
     wwgrad = fill(0.0, n)        # Working weights for the gradient: gradient = transpose(X)*wwgrad
     wwhess = fill(0.0, n)        # Working weights for the hessian:  hessian  = transpose(X)*Diagonal(wwhess)*X
     XtW    = fill(0.0, pmax, n)  # Space to hold transpose(X)*Diagonal(wwhess) when computing the hessian
-    (d=d, links=links, prms=prms, wwgrad=wwgrad, wwhess=wwhess, XtW=XtW)
+    (d=cfg.distribution, links=cfg.linkfunctions, prms=prms, wwgrad=wwgrad, wwhess=wwhess, XtW=XtW)
 end
 
 ################################################################################
@@ -118,7 +120,15 @@ function update_working_weights!(cache, blocknumber, y, w)
     nothing
 end
 
-"Calculate the working weights for gradient(-LL) and hessian(-LL) for 1 observation."
+"""
+Calculate the working weights for gradient(-LL) and hessian(-LL) for 1 observation.
+
+If `expected` is true, the logpdf_firstderiv term in the hessian working weights is set to 0,
+since the expected value of this term (with respect to the response y) is 0 for each individual.
+
+The default value of `expected` is true because it doesn't seem to adversely affect the search direction
+during the fitting process, and is used to calculate vcov(coefs) after fitting (via the Fisher Information matrix).
+"""
 function calculate_working_weights(d, links, y, prms, blocknumber, expected=true)
     lnk  = links[blocknumber]
     θ    = prms[blocknumber]

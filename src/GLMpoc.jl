@@ -1,18 +1,24 @@
 module GLMpoc
 
-export LogitLink, LogLink
+export GLMconfig, GLMfitted,  # Types
+       LogitLink, LogLink,    # Link functions
+       coef, loglikelihood    # StatsAPI
 
 using Dates
 using Distributions
 using Distributions: digamma, trigamma
 using LinearAlgebra
 using Statistics
+using StatsAPI
 
-# Core
-include("check_input_data.jl")
-include("linkfunctions.jl")
-include("blockwise_coordinate_descent.jl"); using .blockwise_coord_descent
-include("fit.jl")
+# API
+include("api.jl")
+
+# Fit
+include("fit/check_input_data.jl")
+include("fit/linkfunctions.jl")
+include("fit/blockwise_coordinate_descent.jl"); using .blockwise_coord_descent
+include("fit/fit.jl")
 
 # Response distributions
 include("responsedistributions/beta.jl")

@@ -35,7 +35,8 @@ end
 # Optional: override the default initcoefs method defined in fit.jl
 
 # Needs cleaning up, but ok for POC.
-function initcoefs(d::Beta, links, w, y, Xs)
+function initcoefs(cfg::GLMconfig{L,D,F}, y, Xs, w) where {L,D <: Beta,F}
+    links = cfg.linkfunctions
     z   = [link(links[1], yi) for yi in y]
     X   = Xs[1]
     b   = inv(transpose(X)*X)*transpose(X)*z
