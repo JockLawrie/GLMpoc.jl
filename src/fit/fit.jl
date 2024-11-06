@@ -9,7 +9,7 @@ function fit(cfg::GLMconfig, y, Xs, w, opts=nothing)
     opts  = isnothing(opts) ? defaultopts() : merge(defaultopts(), opts)
     loss, coefs = blockwise_coordinate_descent(coefs, loss!, block_gradient!, block_hessian!, y, Xs, w, opts, cache)
     nobs = isnothing(w) ? length(y) : sum(w)
-    vcov = construct_vcov(cache, coefs, y, Xs, w)
+    vcov = construct_vcov(cache.d, cache, coefs, y, Xs, w)
     GLMfitted(cfg, coefs, nobs, -loss, vcov)
 end
 
@@ -101,22 +101,19 @@ end
 
 #################################################################################################
 
+apply_observation_weights!(a, w) = a .*= w
+apply_observation_weights!(a, w::Nothing) = a
+
 "Update the working weights for the block"
 function update_working_weights!(cache, blocknumber, y, w, expected=true)
     d, links, prms, wwgrad, wwhess, XtW = cache
-    if isnothing(w)
-        for (i, yi) in enumerate(y)
-            wwg, wwh = calculate_working_weights(d, links, yi, view(prms, i, :), blocknumber, expected)
-            wwgrad[i] = wwg
-            wwhess[i] = wwh
-        end
-    else
-        for (i, yi) in enumerate(y)
-            wwg, wwh = calculate_working_weights(d, links, yi, view(prms, i, :), blocknumber, expected)
-            wwgrad[i] = w[i] * wwg
-            wwhess[i] = w[i] * wwh
-        end
+    for (i, yi) in enumerate(y)
+        wwg, wwh = calculate_working_weights(d, links, yi, view(prms, i, :), blocknumber, expected)
+        wwgrad[i] = wwg
+        wwhess[i] = wwh
     end
+    apply_observation_weights!(wwgrad, w)
+    apply_observation_weights!(wwhess, w)
     nothing
 end
 
@@ -147,21 +144,19 @@ end
 
 #################################################################################################
 
-function construct_vcov(cache, coefs, y, Xs, w)
+function construct_vcov(d, cache, coefs, y, Xs, w)
     # Update prms
-    d    = cache.d
-    prms = cache.prms
-    update_eta!(prms, Xs, coefs)
-    eta_to_prms!(d, prms, cache.links)
+    update_eta!(cache.prms, Xs, coefs)
+    eta_to_prms!(d, cache.prms, cache.links)
 
-    # Compute expected hessian
+    # Compute expected hessian (which is block diagonal)
     H = [fill(0.0, length(b), length(b)) for b in coefs]
     for (blocknumber, b) in enumerate(coefs)
         update_working_weights!(cache, blocknumber, y, w, true)
         block_hessian!(H, blocknumber, Xs, w, cache)
     end
 
-    # Construct vcov from hessian
+    # Construct vcov from hessian (which is also block diagonal)
     p      = sum(length(b) for b in coefs)
     result = fill(0.0, p, p)
     psum   = 0

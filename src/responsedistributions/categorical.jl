@@ -59,3 +59,53 @@ function calculate_working_weights(d::Categorical, links, y, prms, blocknumber, 
     wwhess = max(sqrt(eps()), probk - probk*probk)
     wwgrad, wwhess
 end
+
+###############################################################################
+# Override the default construct_vcov method defined in fit.jl
+
+"For d::Categorical, the hessian is not block diagonal"
+function construct_vcov(d::Categorical, cache, coefs, y, Xs, w)
+    update_eta!(cache.prms, Xs, coefs)
+    eta_to_prms!(d, cache.prms, cache.links)
+    H = hessian(d, cache, Xs[1], w)
+#    Matrix(inv(H))
+    Matrix(Hermitian(inv(bunchkaufman!(H))))
+end
+
+function hessian(d::Categorical, cache, X, w)
+    wwhess = cache.wwhess
+    prms = cache.prms
+    km1  = size(prms, 2)
+    n, p = size(X)
+    H    = fill(0.0, p*km1, p*km1)
+    Xt   = transpose(X)
+    W    = Diagonal(wwhess)
+    XtW  = cache.XtW
+    del  = sqrt(eps())
+    for j = 1:km1
+        cols = (p*(j - 1) + 1):(p*j)
+        for i = j:km1  # Update block (i, j)
+            rows  = (p*(i - 1) + 1):(p*i)
+            Hview = view(H, rows, cols)
+            set_working_weights!(wwhess, prms, i, j, del)
+            apply_observation_weights!(wwhess, w)
+            mul!(XtW, Xt, W)
+            mul!(Hview, XtW, X)  # Hview = XtWX
+        end
+    end
+    Hermitian(H, :L)
+end
+
+"""
+wwhess .= w .* Pi .* (delta_ij - Pj)
+i, j refer to categories 2:ncategories.
+"""
+function set_working_weights!(wwhess, probs, i, j, del)
+    Pi = view(probs, :, i)
+    if i == j
+        wwhess .= max.(del, Pi .* (1.0 .- Pi))
+    else
+        Pj = view(probs, :, j)
+        wwhess .= min.(-del, -Pi .* Pj)
+    end
+end

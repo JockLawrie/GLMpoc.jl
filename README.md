@@ -6,8 +6,8 @@ For a given model, each parameter of the response distribution depends on its ow
 The sets of covariates may or may not overlap; they can be the same too.
 
 The test cases include:
-1. Multinomial regression (each category can have a different set of predictors)
-2. Beta regression, with both the mean and precision depending on covariates
+1. Multinomial regression
+2. Beta regression with both the mean and precision depending on covariates
 
 ## Quick Start
 
@@ -20,7 +20,7 @@ loglikelihood(fitted)
 ```
 
 The `GLMconfig` has fields:
-- `responsename`:   The name of the response variables
+- `responsename`:   The name of the response variable
 - `responselevels`: The levels of the response variable if its distribution is categorical
 - `coefnames`:      The names of the predictors
 - `weightname`:     The name of the weight variable. An empty string (the default) indicates unit weights.
